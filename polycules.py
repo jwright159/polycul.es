@@ -54,7 +54,7 @@ def migrate():
             if migration_number <= current_migration:
                 print("migration {} already applied".format(migration_number))
                 continue
-            with open(os.path.join(migrations_dir, filename), "rb") as f:
+            with open(os.path.join(migrations_dir, filename), "r") as f:
                 try:
                     db.cursor().executescript(f.read())
                 except Exception as e:
@@ -101,7 +101,10 @@ def front():
 def example():
     """ View an example polycule. """
     result = g.db.execute("select * from polycules where id = 1")
-    graph = result.fetchone()[1]
+    try:
+        graph = result.fetchone()[1]
+    except TypeError: # no polycules yet!
+        graph = {}
     return render_template("embed_polycule.jinja2", graph=graph)
 
 

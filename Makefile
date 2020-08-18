@@ -1,5 +1,5 @@
 venv/bin/python:
-	virtualenv venv
+	virtualenv poly_venv
 	venv/bin/pip install -r requirements.txt
 
 .PHONY: run
