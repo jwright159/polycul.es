@@ -1,11 +1,38 @@
 'use strict';
 
-class D3EventObject {
+class Element {
   /* 
     Do not define an events static member, because the static 
     variable would be inhereted and shared by the subclasses.
     Instead, we define a events variable on each subclass.
   */
+
+  static states = {
+    NONE: 0,
+    SELECTED: 1,
+    HOUSE: 2,
+    EXTENDED: 3
+  }
+
+  constructor() {
+    this.state = Element.states.NONE;
+  }
+
+  // selection stuff
+
+  unselect() {
+    if (this.state === Element.states.SELECTED) {
+      this.state = Element.states.NONE;
+    }
+  }
+
+  select() {
+    this.state = Element.states.SELECTED;
+  }
+
+  selected() { return this.state === Element.states.SELECTED; }
+
+  // Event stuff
 
   static addEvent(name, func) {
     this.events[name] = func
@@ -19,12 +46,15 @@ class D3EventObject {
 
   static attach_events(data_binding) {
     Object.entries(this.events).forEach(
-      ([name, f]) => (data_binding.on(name, f))
+      ([name, f]) => {
+        console.log(`attach_events[${name}]`);
+        data_binding.on(name, f);
+      }
     )
   }
 }
 
-class Node extends D3EventObject {
+class Node extends Element {
   static events = {}
 
   constructor(id, point) {
@@ -35,8 +65,9 @@ class Node extends D3EventObject {
       this.x = point[0];
       this.y = point[1];
     } else {
-      this.x = width / 2;
-      this.y = height / 2;
+      // todo: restore access to width & height
+      this.x = 100 / 2;
+      this.y = 100 / 2;
     }
     this.r = 12;
   }
@@ -46,11 +77,11 @@ class Node extends D3EventObject {
     return node;
   }
 
-  selected() { return this === selected_node }
+  // selected() { return this.state === Element.states.SELECTED; }
 
   under_label_point() { return [this.x, this.y + this.r * 2]; }
 
-  toString() { return `${this.name}[${this.x},${this.y}]`; }
+  toString() { return `${this.name}[${this.x.toFixed(2)},${this.y.toFixed(2)}]`; }
 
   setScale(amount) {
     if (amount != 1) {
@@ -63,14 +94,19 @@ class Node extends D3EventObject {
 
   // Draw Functions
   static set_radius(node) { return node.r; }
-  static set_stroke(node) { return node.selected() ? '#00FFFF' : '#888'; }
-  static set_style(node) { return node.dashed ? 'fill:#ccc!important' : null; }
+  static set_stroke(node) {
+    return node.selected() ? '#00FFFF' : '#888';
+  }
+  static set_style(node) {
+    return node.dashed ? 'fill:#ccc!important' : null;
+  }
   static set_stroke_dash(node) { return node.dashed ? `${node.r / 4}, ${node.r / 4}` : null; }
 
   static set_text_y(node) { return - node.r - 2; }
   static set_text(node) { return node.name; }
 
   static transform(node) {
+    // console.log(`Node.transform(${node})`);
     let xform = `translate(${node.x}, ${node.y})`;
     if (node.scale) {
       xform += ` scale(${node.scale})`;
@@ -79,6 +115,7 @@ class Node extends D3EventObject {
   }
 
   static update_svg(data_binding) {
+    // console.log(`Node.update_svg`);
     data_binding.attr('transform', Node.transform)
     data_binding.select('text')
       .attr('y', Node.set_text_y)
@@ -93,7 +130,8 @@ class Node extends D3EventObject {
   static create_svg(data_binding) {
     let node_elements = data_binding.enter()
       .append('g')
-      .classed('node', true);
+      .classed('node', true)
+      .attr('transform', Node.transform);
 
     // circle (node) group
     node_elements.append('circle')
@@ -114,7 +152,7 @@ class Node extends D3EventObject {
   }
 }
 
-class Link extends D3EventObject {
+class Link extends Element {
   static events = {}
 
   constructor(source, target) {
@@ -128,9 +166,25 @@ class Link extends D3EventObject {
     this.centerText = "";
   }
 
-  selected() {
-    return this == selected_link;
+  refreshNodeObjects(nodeList) {
+    nodeList.forEach(
+      node => {
+        // stored version will have a deep copy, find proper references
+        if (node.id === this.source.id) {
+          this.source = node;
+        }
+        if (node.id === this.target.id) {
+          this.target = node;
+        }
+      }
+    )
+
+    return this;
   }
+
+  // selected() {
+  //   return this == selected_link;
+  // }
 
   name() {
     return `[${this.source.name}]->[${this.target.name}]`;
@@ -225,234 +279,461 @@ Link.addEvents({
   mouseout: function () {
     d3.select(this).selectAll('.meaning').classed('hidden', true);
   }
-})
+});
+
+class StorageHelper {
+  // Helper object that makes it easy to update and save graph and view info
+
+  constructor(variable) {
+    this.val = variable;
+    this.writing = false;
+
+    this.nodes = variable.nodes;
+    this.links = variable.links;
+    this.scale = variable.scale;
+    this.translate = variable.translate;
+  }
+
+  merge(obj) {
+    this.writing = true;
+    Object.entries(obj).forEach(
+      (name, val) => this.update(name, val)
+    );
+    this.save();
+  }
+
+  update(property, value) {
+    this.val[property] = value;
+    this[property] = value;
+
+    if (!this.writing) {
+      this.save();
+    }
+  }
+
+  save() {
+    d3.select('#graph-field').html(JSON.stringify(this.val));
+    this.writing = false;
+  }
+}
+
+class Viewport {
+  static width = 960;
+  static height = 500;
+  static visibleGraph = null;
+
+  constructor(storage) {
+    this.storage = storage;
+    this.scale = storage.scale || 1;
+    this.translate = storage.translate || [0, 0];
+
+    this.panel = null;
+    this.translateContainer = null;
+    this.scaleContainer = null;
+    this.graphArea = null;
+    this.width = Viewport.width;
+    this.height = Viewport.height;
+
+    this.setup();
+  }
+
+  setup() {
+    this.panel = d3.select('#panel')
+      .attr('oncontextmenu', 'return false;')
+      .attr('width', Viewport.width)
+      .attr('height', Viewport.height);
+    this.translateContainer = this.panel.append('g');
+    this.scaleContainer = this.translateContainer.append('g');
+    this.graphArea = this.scaleContainer.append('g');
+
+    var viewport = this;
+
+    d3.select('#in')
+      .on('click', function () {
+        viewport.zoom(0.1);
+      });
+    d3.select('#out')
+      .on('click', function () {
+        viewport.zoom(-0.1);
+      });
+    d3.select('#up')
+      .on('click', function () {
+        viewport.pan(10, 0);
+      });
+    d3.select('#down')
+      .on('click', function () {
+        viewport.pan(-10, 0);
+      });
+    d3.select('#left')
+      .on('click', function () {
+        viewport.pan(0, 10);
+      });
+    d3.select('#right')
+      .on('click', function () {
+        viewport.pan(0, -10);
+      });
+
+    // draw
+    this.draw();
+  }
+
+  draw() {
+    this.translateContainer
+      .attr('transform', 'translate(' + this.translate + ')');
+    this.scaleContainer
+      .attr('transform', 'scale(' + this.scale + ')');
+  }
+
+  save() {
+    this.storage.merge({
+      scale: this.scale,
+      translate: this.translate
+    });
+  }
+
+  zoom(newScale) {
+    var oldscale = this.scale;
+    this.scale += newScale;
+
+    this.translate = [
+      this.translate[0] + ((this.width * oldscale) - (this.width * this.scale)),
+      this.translate[1] + ((this.height * oldscale) - (this.height * this.scale))
+    ];
+
+    this.draw();
+    this.save();
+  }
+
+  pan(vert, horiz) {
+    this.translate = [
+      this.translate[0] + horiz,
+      this.translate[1] + vert
+    ];
+
+    this.draw();
+    this.save();
+  }
+}
+
+class GraphView {
+  static repaint_delay = 0;
+
+  constructor(graph, viewport = null) {
+    this.graph = graph;
+    this.viewport = viewport;
+    this.d3Graph = null;
+    this.edge_group = null;
+    this.node_group = null;
+    this.drag_line = null;
+
+    this.full_repaint = false;
+    this.repaint_soon = null;
+
+    this.simUpdate = this.simUpdate.bind(this);
+
+    if (this.viewport != null) {
+      this.createView()
+    }
+  }
+
+  trigger_repaint_style() {
+    if (this.repaint_soon === null) {
+      this.repaint_soon = setTimeout(this.repaint.bind(this), GraphView.epaint_delay);
+    }
+  }
+
+  trigger_full_repaint() {
+    // called when we add or remove elements
+    this.full_repaint = true;
+    this.trigger_repaint_style();
+  }
+
+  setViewport(viewport) {
+    this.viewport = viewport;
+    this.createView();
+  }
+
+  createView() {
+    console.log(`GraphView.createView()`);
+    if (this.viewport === null) {
+      console.log(`GraphView Tried to call createView without a viewport set!`);
+      return;
+    }
+    let vp = this.viewport
+
+    this.d3Graph = d3.layout.force()
+      .nodes(this.graph.nodes)
+      .links(this.graph.edges)
+      .size([vp.width / vp.scale, vp.height / vp.scale])
+      .linkDistance(function (d) { return Math.log(3 / d.strength * 10) * 50; })
+      .charge(-500)
+      .on('tick', this.simUpdate);
+
+    this.edge_group = vp.graphArea.append('g').selectAll('.link');
+    this.node_group = vp.graphArea.append('g').selectAll('.node');
+    this.drag_line = vp.graphArea.append('line').attr('class', 'link dragline hidden');
+  }
+
+  dragLineStart(node) {
+    this.drag_line
+      .classed('hidden', false)
+      .attr({
+        'x1': node.x,
+        'y1': node.y,
+        'x2': node.x,
+        'y2': node.y
+      });
+  }
+
+  dragLineHide() { this.drag_line.classed('hidden', true); }
+
+  start() {
+    if (this.view === null) {
+      return;
+    }
+    console.log(`GraphView.start()`);
+    this.trigger_full_repaint();
+    this.repaint();
+
+    return this;
+  }
+
+  simUpdate() {
+    console.log(`GraphView.simUpdate()`);
+    // console.log(`GraphView.graph = ${this.graph}`)
+    Link.update_svg(this.edge_group);
+    Node.update_svg(this.node_group);
+  }
+
+  repaint() {
+    console.log(`GraphView.repaint()`);
+    // console.log(`GraphView.graph = ${this.graph}`)
+    if (this.full_repaint) {
+      this.edge_group = this.edge_group.data(this.graph.edges);
+      // NB: the function arg is crucial here! nodes are known by id, not by index!
+      this.node_group = this.node_group.data(this.graph.nodes, function (d) { return d.id; });
+
+      // paint any new nodes
+      Link.create_svg(this.edge_group);
+      Node.create_svg(this.node_group);
+
+      // attach d3 events to nodes and links
+      Link.attach_events(this.edge_group);
+      Node.attach_events(this.node_group);
+
+      // remove old elements
+      this.edge_group.exit().remove();
+      this.node_group.exit().remove();
+
+      // (re)start the graph moving
+      this.d3Graph.start();
+    } else {
+      // d3js is running a physics 'sim' on the nodes and edges, 
+      // but we need to issue the draw commands
+      Link.update_svg(this.edge_group);
+      Node.update_svg(this.node_group);
+    }
+
+    // mini-repaint housekeeping
+    this.full_repaint = false;
+    // avoid double calls
+    clearTimeout(this.repaint_soon);
+    this.repaint_soon = null;
+  }
+
+}
+
+class Graph {
+  static node_props_to_ignore = ['x', 'y', 'px', 'py']
+  static link_props_to_ignore = ['source', 'target']
+  // static repaint_delay = 0;
+
+  constructor(nodes = [], edges = []) {
+    this.lastId = 0;
+    this.nodes = nodes;
+    this.edges = edges;
+    this.view = null;
+    this.storage = null;
+    this.viewport = null;
+
+    this._wrapLink = this._wrapLink.bind(this);
+    this._wrapNode = this._wrapNode.bind(this);
+    this._repaint_on_change = this._repaint_on_change.bind(this);
+  }
+
+  setStorage(storage) {
+    this.storage = storage;
+  }
+
+  load(storage) {
+    this.setStorage(storage);
+    this.loadNodesFromJson(storage.nodes);
+    this.loadLinksFromJson(storage.links);
+
+    return this;
+  }
+
+  display(viewport = null) {
+    if (viewport === null && this.viewport === null) {
+      console.log(`Graph.display: no viewport available!`);
+      return;
+    }
+
+    if (viewport != null) {
+      // replace if needed
+      this.viewport = viewport;
+    }
+
+    this.view = new GraphView(this, this.viewport);
+    // we're the visible graph right now
+    Viewport.visibleGraph = this;
+
+    return this;
+  }
+
+  trigger_repaint_style() {
+    if (this.view != null) {
+      this.view.trigger_repaint_style();
+    }
+  }
+
+  trigger_full_repaint() {
+    if (this.view != null) {
+      this.view.trigger_full_repaint();
+    }
+  }
+
+  toString() { return `Graph[${this.nodes.map((n) => n.toString())}]`; }
+
+  _repaint_on_change(object, props_to_ignore, repaint) {
+    return new Proxy(object, {
+      set: function (obj, prop, value) {
+        if (!props_to_ignore.includes(prop)) {
+          repaint();
+        }
+        if (typeof value === 'number' && isNaN(value)) {
+          console.log(`set nan`);
+        }
+        obj[prop] = value;
+        return true;
+      },
+      deleteProperty: function (o, k) {
+        delete o[k];
+        if (!props_to_ignore.includes(k)) {
+          repaint();
+        }
+        return true;
+      }
+    });
+  }
+
+  _wrapNode(node) {
+    if (this.lastId < node.id) {
+      this.lastId = node.id;
+    }
+    return this._repaint_on_change(node, Graph.node_props_to_ignore, this.trigger_repaint_style.bind(this));
+  }
+
+  _wrapLink(link) {
+    return this._repaint_on_change(link, Graph.link_props_to_ignore, this.trigger_repaint_style.bind(this));
+  }
+
+  save() {
+    if (this.storage === null) {
+      return;
+    }
+
+    this.storage.merge({
+      nodes: this.nodes,
+      links: this.edges
+    })
+  }
+
+  // 'public' methods
+
+  select(element) {
+    this.nodes.forEach((n) => n.unselect());
+    this.edges.forEach((e) => e.unselect());
+    element.select();
+  }
+
+  createNode(point) {
+    let node = this._wrapNode(new Node(++this.lastId, point));
+    this.nodes.push(node);
+    this.save();
+    this.trigger_full_repaint();
+    return node;
+  }
+
+  createLink(source, target) {
+    let existing = Link.search_index(this.edges, source, target);
+
+    if (existing) {
+      // Don't create dupliacte links
+      return existing;
+    }
+
+    let link = this._wrapLink(new Link(source, target))
+    this.edges.push(link);
+    this.save();
+    this.trigger_full_repaint();
+    return link;
+  }
+
+  removeLink(link) {
+    let was_inserted = this.edges.indexOf(link);
+    if (was_inserted >= 0) {
+      this.edges.splice(was_inserted, 1);
+    }
+    this.save();
+    this.trigger_full_repaint();
+    return link;
+  }
+
+  removeNode(node) {
+    let was_inserted = this.nodes.indexOf(node);
+    if (was_inserted >= 0) {
+      // remove from node list
+      this.nodes.splice(was_inserted, 1);
+      // remove all references from links
+      this.edges
+        .filter((l) => (l.source === node || l.target === node)).
+        forEach((link) => this.removeLink(link));
+    }
+    // alaways decrement, even if the node wasn't inserted for some reason
+    this.lastId--;
+    this.save();
+    this.trigger_full_repaint();
+    return node;
+  }
+
+  // Node and Edge Creation
+  loadNodesFromJson(nodeJsonObject) {
+    this.nodes = nodeJsonObject.map(Node.from).map(this._wrapNode);
+  }
+  loadLinksFromJson(linkJsonObject) {
+    // we're restaring from stored JSON
+    this.edges = linkJsonObject.map(Link.from).map(this._wrapLink);
+    this.edges.forEach((edge) => edge.refreshNodeObjects(this.nodes));
+  }
+
+  // Use proxy objects to trigger a draw call if needed
+}
+
+let storage = new StorageHelper(window.graph);
+let viewport = new Viewport(storage);
+let g = new Graph()
+  .load(storage)
+  .display(viewport)
+  .view.start();
+
 
 // set up SVG for D3
-const repaint_delay = 0;
-var width = 960,
-  height = 500,
-  repaint_soon = null,
-  full_repaint = true,
-  node_props_updated_by_tick = ['x', 'y', 'px', 'py'],
-  selected_node = null,
-  selected_link = null,
-  mousedown_link = null,
+var mousedown_link = null,
   mousedown_node = null,
   mouseup_node = null,
   mouse_over_link = false,
-  editing = false,
-  scale = window.graph.scale || 1,
-  translate = window.graph.translate || [0, 0];
-
-// View management functions
-
-var panel = d3.select('#panel')
-  .attr('oncontextmenu', 'return false;')
-  .attr('width', width)
-  .attr('height', height);
-var translateContainer = panel.append('g')
-  .attr('transform', 'translate(' + translate + ')');
-var scaleContainer = translateContainer.append('g')
-  .attr('transform', 'scale(' + scale + ')');
-var svg = scaleContainer.append('g');
-
-function zoom(newScale) {
-  var oldscale = scale;
-  scale += newScale;
-  window.graph.scale = scale;
-  scaleContainer.attr('transform', 'scale(' + scale + ')');
-
-  translate = [
-    translate[0] + ((width * oldscale) - (width * scale)),
-    translate[1] + ((height * oldscale) - (height * scale))
-  ];
-  window.graph.translate = translate;
-  translateContainer.attr('transform', 'translate(' + translate + ')');
-
-  try {
-    writeGraph();
-  } catch (e) {
-    //
-  }
-}
-
-function pan(vert, horiz) {
-  translate = [
-    translate[0] + horiz,
-    translate[1] + vert
-  ];
-  window.graph.translate = translate;
-  translateContainer.attr('transform', 'translate(' + translate + ')');
-
-  try {
-    writeGraph();
-  } catch (e) {
-    //
-  }
-}
-
-d3.select('#in')
-  .on('click', function () {
-    zoom(0.1);
-  });
-d3.select('#out')
-  .on('click', function () {
-    zoom(-0.1);
-  });
-d3.select('#up')
-  .on('click', function () {
-    pan(10, 0);
-  });
-d3.select('#down')
-  .on('click', function () {
-    pan(-10, 0);
-  });
-d3.select('#left')
-  .on('click', function () {
-    pan(0, 10);
-  });
-d3.select('#right')
-  .on('click', function () {
-    pan(0, -10);
-  });
-
-// Drawing management functions
-
-function simUpdate() {
-  Link.update_svg(path);
-  Node.update_svg(node);
-}
-
-// update force layout (called automatically each iteration)
-function repaint() {
-  if (full_repaint) {
-    path = path.data(window.graph.links);
-    // NB: the function arg is crucial here! nodes are known by id, not by index!
-    node = node.data(window.graph.nodes, function (d) { return d.id; });
-
-    // paint any new nodes
-    Link.create_svg(path);
-    Node.create_svg(node);
-
-    // attach d3 events to nodes and links
-    Link.attach_events(path);
-    Node.attach_events(node);
-
-    // remove old elements
-    node.exit().remove();
-    path.exit().remove();
-
-    // save changes if needed
-    if (typeof writeGraph != 'undefined') {
-      writeGraph();
-    }
-    // (re)start the graph moving
-    force.start();
-  } else {
-    // d3js is running a physics 'sim' on the nodes and edges, 
-    // but we need to issue the draw commands
-    Link.update_svg(path);
-    Node.update_svg(node);
-  }
-
-  // mini-repaint housekeeping
-  full_repaint = false;
-  // avoid double calls
-  clearTimeout(repaint_soon);
-  repaint_soon = null;
-}
-
-function trigger_repaint_style() {
-  if (repaint_soon === null) {
-    repaint_soon = setTimeout(repaint, repaint_delay);
-  }
-}
-
-function trigger_full_repaint() {
-  // called when we add or remove elements
-  full_repaint = true;
-  trigger_repaint_style();
-}
-
-// Use proxy objects to trigger a draw call if needed
-function style_repaint_on_set(object, props_to_ignore) {
-  if (typeof props_to_ignore === 'undefined') {
-    props_to_ignore = [];
-  }
-
-  return new Proxy(object, {
-    set: function (obj, prop, value) {
-      if (!props_to_ignore.includes(prop)) {
-        trigger_repaint_style();
-      }
-      obj[prop] = value;
-      return true;
-    },
-    deleteProperty: function (o, k) {
-      delete o[k];
-      if (!props_to_ignore.includes(prop)) {
-        trigger_repaint_style();
-      }
-      return true;
-    }
-  });
-}
-
-
-function loadNode(json) { return style_repaint_on_set(Node.from(json), node_props_updated_by_tick); }
-function loadLink(json) {
-  // we're restaring from stored JSON
-  let link = Link.from(json);
-
-  // stored version will have a deep copy, find proper references
-  window.graph.nodes.forEach(function (node) {
-    if (node.id === link.source.id) {
-      link.source = node;
-    }
-    if (node.id === link.target.id) {
-      link.target = node;
-    }
-  });
-
-  return style_repaint_on_set(link);
-}
-
-console.log(`loading graph items`);
-window.graph.nodes = window.graph.nodes.map(loadNode);
-window.graph.links = window.graph.links.map(loadLink);
-
-console.log(`creating force - full_repaint:${full_repaint}`);
-// init D3 force layout
-var force = d3.layout.force()
-  .nodes(window.graph.nodes)
-  .links(window.graph.links)
-  .size([width / scale, height / scale])
-  .linkDistance(function (d) { return Math.log(3 / d.strength * 10) * 50; })
-  .charge(-500)
-  .on('tick', simUpdate);
-
-// line displayed when dragging new nodes
-var drag_line = svg.append('line')
-  .attr('class', 'link dragline hidden');
-
-// handles to link and node element groups
-var path = svg.append('g').selectAll('.link'),
-  node = svg.append('g').selectAll('.node');
-
-function startGraphAnimation() {
-  console.log('startGraphAnimation');
-  // rebuild nodes and links
-  trigger_full_repaint();
-  // don't wait 
-  repaint();
-
-  try {
-    writeGraph();
-  } catch (e) {
-    // Start dragging behavior if we are not editing the graph
-    node.call(force.drag);
-  }
-}
+  editing = false;
 
 function panzoom() {
   d3.event.preventDefault()
@@ -460,28 +741,28 @@ function panzoom() {
     case 'ArrowUp':
     case 'w':
     case 'k':
-      pan(10, 0);
+      viewport.pan(10, 0);
       break;
     case 'ArrowDown':
     case 's':
     case 'j':
-      pan(-10, 0);
+      viewport.pan(-10, 0);
       break;
     case 'ArrowLeft':
     case 'a':
     case 'h':
-      pan(0, 10);
+      viewport.pan(0, 10);
       break;
     case 'ArrowRight':
     case 'd':
     case 'l':
-      pan(0, -10);
+      viewport.pan(0, -10);
       break;
     case '+':
-      zoom(0.1);
+      viewport.zoom(0.1);
       break;
     case '-':
-      zoom(-0.1);
+      viewport.zoom(-0.1);
       break;
   }
 }
@@ -491,4 +772,4 @@ d3.select(window)
 
 console.log(`Calling base start`);
 // app starts here
-startGraphAnimation();
+//startGraphAnimation();

@@ -64,6 +64,12 @@ target/
 # Editor files
 *.sw[op]
 
+# Pycharm
+.idea
+
+# OS X
+.DS_Store
+
 # Project files
 dev*.db
 pip-selfcheck.json

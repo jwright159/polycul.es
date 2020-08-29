@@ -1,31 +1,34 @@
 'use strict';
 
+// helpers
+function createLink(source, target) { return Viewport.visibleGraph.createLink(source, target); }
+function createNode(point) { return Viewport.visibleGraph.createNode(point); }
+function removeLink(link) { return Viewport.visibleGraph.removeLink(link); }
+function removeNode(node) { return Viewport.visibleGraph.removeNode(node); }
+
+
 function resetMenus() {
   d3.select('#node-menu').style('display', 'none');
   d3.select('#link-menu').style('display', 'none');
 }
 
 function closeEditMenu() {
-  selected_link = null;
-  selected_node = null;
   editing = false;
   resetMenus();
 }
 
 function selectElement(target) {
-  trigger_repaint_style();
-  if (target === selected_link || target === selected_node) {
+  // Viewport.visibleGraph.trigger_repaint_style();
+  if (target.selected()) {
     // de-select
+    target.unselect();
     closeEditMenu();
   } else {
     editing = true;
+    Viewport.visibleGraph.select(target);
     if (target instanceof Node) { // selecting a node
-      selected_link = null;
-      selected_node = target;
       editNode(target);
     } else {
-      selected_link = target;
-      selected_node = null;
       editLink(target);
     }
   }
@@ -71,14 +74,14 @@ Node.addEvents({
     mousedown_node = d;
 
     // reset drag line to be centered on mousedown_node
-    drag_line
-      .classed('hidden', false)
-      .attr({
-        'x1': mousedown_node.x,
-        'y1': mousedown_node.y,
-        'x2': mousedown_node.x,
-        'y2': mousedown_node.y
-      });
+    // drag_line
+    //   .classed('hidden', false)
+    //   .attr({
+    //     'x1': mousedown_node.x,
+    //     'y1': mousedown_node.y,
+    //     'x2': mousedown_node.x,
+    //     'y2': mousedown_node.y
+    //   });
 
   },
   mouseup: function (d) {
@@ -87,9 +90,9 @@ Node.addEvents({
     }
 
     // needed by FF
-    drag_line
-      .classed('hidden', true)
-      .style('marker-end', '');
+    // drag_line
+    //   .classed('hidden', true)
+    //   .style('marker-end', '');
 
     // are we making a new link or clicking on a new node?
     if (d === mousedown_node) {
@@ -103,7 +106,7 @@ Node.addEvents({
     }
 
     resetMouseVars();
-    startGraphAnimation();
+    // startGraphAnimation();
   }
 });
 
@@ -125,9 +128,7 @@ function editNode(d) {
     .on('change', function () { d.dashed = d3.select(this).property('checked') });
   nodeMenu.select('#delete-node')
     .on('click', function () {
-      if (selected_node) {
-        removeNode(selected_node);
-      }
+      removeNode(d);
       closeEditMenu();
     });
 }
@@ -158,74 +159,72 @@ function editLink(d) {
     });
   linkMenu.select('#delete-link')
     .on('click', function () {
-      if (selected_link) {
-        removeLink(selected_link);
-      }
+      removeLink(d);
       closeEditMenu();
     });
 }
 
 // Node and Link creation and destruction methods
 
-function createNode(point) {
-  let node = style_repaint_on_set(new Node(++window.graph.lastId, point), node_props_updated_by_tick);
-  window.graph.nodes.push(node);
-  trigger_full_repaint();
-  return node;
-}
+// function createNode(point) {
+//   let node = style_repaint_on_set(new Node(++window.graph.lastId, point), node_props_updated_by_tick);
+//   window.graph.nodes.push(node);
+//   trigger_full_repaint();
+//   return node;
+// }
 
-function createLink(source, target) {
-  let existing = Link.search_index(window.graph.links, source, target);
+// function createLink(source, target) {
+//   let existing = Link.search_index(window.graph.links, source, target);
 
-  if (existing) {
-    // Don't create dupliacte links
-    return existing;
-  }
+//   if (existing) {
+//     // Don't create dupliacte links
+//     return existing;
+//   }
 
-  let link = style_repaint_on_set(new Link(source, target))
-  window.graph.links.push(link);
-  trigger_full_repaint();
-  return link;
-}
+//   let link = style_repaint_on_set(new Link(source, target))
+//   window.graph.links.push(link);
+//   trigger_full_repaint();
+//   return link;
+// }
 
-function removeLink(link) {
-  let was_inserted = window.graph.links.indexOf(link);
-  if (was_inserted >= 0) {
-    window.graph.links.splice(was_inserted, 1);
-  }
+// function removeLink(link) {
+//   let was_inserted = window.graph.links.indexOf(link);
+//   if (was_inserted >= 0) {
+//     window.graph.links.splice(was_inserted, 1);
+//   }
 
-  trigger_full_repaint();
-  return link;
-}
+//   trigger_full_repaint();
+//   return link;
+// }
 
-function removeNode(node) {
-  let was_inserted = window.graph.nodes.indexOf(node);
-  if (was_inserted >= 0) {
-    // remove from node list
-    window.graph.nodes.splice(was_inserted, 1);
-    // remove all references from links
-    window.graph.links
-      .filter((l) => (l.source === node || l.target === node)).
-      forEach((link) => removeLink(link));
-  }
-  // alaways decrement, even if the node wasn't inserted for some reason
-  window.graph.lastId--;
+// function removeNode(node) {
+//   let was_inserted = window.graph.nodes.indexOf(node);
+//   if (was_inserted >= 0) {
+//     // remove from node list
+//     window.graph.nodes.splice(was_inserted, 1);
+//     // remove all references from links
+//     window.graph.links
+//       .filter((l) => (l.source === node || l.target === node)).
+//       forEach((link) => removeLink(link));
+//   }
+//   // alaways decrement, even if the node wasn't inserted for some reason
+//   window.graph.lastId--;
 
-  trigger_full_repaint();
-  return node;
-}
+//   trigger_full_repaint();
+//   return node;
+// }
 
 
-function writeGraph() {
-  d3.select('#graph-field').html(JSON.stringify(window.graph));
-}
+// function writeGraph() {
+//   d3.select('#graph-field').html(JSON.stringify(window.graph));
+// }
 
 function mousedown() {
   // prevent I-bar on drag
   //d3.event.preventDefault();
 
   // because :active only works in WebKit?
-  svg.classed('active', true);
+  viewport.graphArea.classed('active', true);
 
   if (d3.event.ctrlKey || d3.event.target.nodeName !== 'svg' || mouse_over_link) {
     return;
@@ -243,28 +242,28 @@ function mousemove() {
 
   // update drag line
   var point = d3.mouse(this);
-  drag_line
-    .attr({
-      'x1': mousedown_node.x,
-      'y1': mousedown_node.y,
-      'x2': point[0],
-      'y2': point[1]
-    });
+  // drag_line
+  //   .attr({
+  //     'x1': mousedown_node.x,
+  //     'y1': mousedown_node.y,
+  //     'x2': point[0],
+  //     'y2': point[1]
+  //   });
 }
 
 function mouseup() {
   if (mousedown_node) {
     // hide drag line
-    drag_line
-      .classed('hidden', true)
-      .style('marker-end', '');
+    // drag_line
+    //   .classed('hidden', true)
+    //   .style('marker-end', '');
   }
   if (editing) {
     return;
   }
 
   // because :active only works in WebKit?
-  svg.classed('active', false);
+  viewport.graphArea.classed('active', false);
 
   // clear mouse event vars
   resetMouseVars();
@@ -281,8 +280,9 @@ function keydown() {
 
   // ctrl
   if (d3.event.keyCode === 17) {
+    // todo: add drag to viewport / graphView
     node.call(force.drag);
-    svg.classed('ctrl', true);
+    viewport.graphArea.classed('ctrl', true);
   }
 }
 
@@ -291,10 +291,11 @@ function keyup() {
 
   // ctrl
   if (d3.event.keyCode === 17) {
-    node
-      .on('mousedown.drag', null)
-      .on('touchstart.drag', null);
-    svg.classed('ctrl', false);
+    // todo drag
+    // node
+    //   .on('mousedown.drag', null)
+    //   .on('touchstart.drag', null);
+    viewport.graphArea.classed('ctrl', false);
   }
 }
 
@@ -313,7 +314,7 @@ function addTemplate(template) {
   })
 }
 
-panel.on('mousedown', mousedown)
+viewport.panel.on('mousedown', mousedown)
   .on('mousemove', mousemove)
   .on('mouseup', mouseup);
 d3.select(window)
@@ -325,6 +326,6 @@ d3.select('.expand-help').on('click', function (e) {
   body.classed('hidden', !body.classed('hidden'));
 });
 
-console.log(`Calling base start`);
+console.log(`Calling bottom of build`);
 // call again, which will disable dragging behavior
-startGraphAnimation();
+Viewport.visibleGraph.trigger_full_repaint();
