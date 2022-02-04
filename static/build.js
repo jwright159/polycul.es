@@ -74,14 +74,14 @@ Node.addEvents({
     mousedown_node = d;
 
     // reset drag line to be centered on mousedown_node
-    // drag_line
-    //   .classed('hidden', false)
-    //   .attr({
-    //     'x1': mousedown_node.x,
-    //     'y1': mousedown_node.y,
-    //     'x2': mousedown_node.x,
-    //     'y2': mousedown_node.y
-    //   });
+    graphView.drag_line
+      .classed('hidden', false)
+      .attr({
+        'x1': mousedown_node.x,
+        'y1': mousedown_node.y,
+        'x2': mousedown_node.x,
+        'y2': mousedown_node.y
+      });
 
   },
   mouseup: function (d) {
@@ -90,9 +90,9 @@ Node.addEvents({
     }
 
     // needed by FF
-    // drag_line
-    //   .classed('hidden', true)
-    //   .style('marker-end', '');
+    graphView.drag_line
+      .classed('hidden', true)
+      .style('marker-end', '');
 
     // are we making a new link or clicking on a new node?
     if (d === mousedown_node) {
@@ -201,21 +201,21 @@ function mousemove() {
 
   // update drag line
   var point = d3.mouse(this);
-  // drag_line
-  //   .attr({
-  //     'x1': mousedown_node.x,
-  //     'y1': mousedown_node.y,
-  //     'x2': point[0],
-  //     'y2': point[1]
-  //   });
+  graphView.drag_line
+    .attr({
+      'x1': mousedown_node.x,
+      'y1': mousedown_node.y,
+      'x2': point[0],
+      'y2': point[1]
+    });
 }
 
 function mouseup() {
   if (mousedown_node) {
     // hide drag line
-    // drag_line
-    //   .classed('hidden', true)
-    //   .style('marker-end', '');
+    graphView.drag_line
+      .classed('hidden', true)
+      .style('marker-end', '');
   }
   if (editing) {
     return;
