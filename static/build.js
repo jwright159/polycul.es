@@ -164,60 +164,6 @@ function editLink(d) {
     });
 }
 
-// Node and Link creation and destruction methods
-
-// function createNode(point) {
-//   let node = style_repaint_on_set(new Node(++window.graph.lastId, point), node_props_updated_by_tick);
-//   window.graph.nodes.push(node);
-//   trigger_full_repaint();
-//   return node;
-// }
-
-// function createLink(source, target) {
-//   let existing = Link.search_index(window.graph.links, source, target);
-
-//   if (existing) {
-//     // Don't create dupliacte links
-//     return existing;
-//   }
-
-//   let link = style_repaint_on_set(new Link(source, target))
-//   window.graph.links.push(link);
-//   trigger_full_repaint();
-//   return link;
-// }
-
-// function removeLink(link) {
-//   let was_inserted = window.graph.links.indexOf(link);
-//   if (was_inserted >= 0) {
-//     window.graph.links.splice(was_inserted, 1);
-//   }
-
-//   trigger_full_repaint();
-//   return link;
-// }
-
-// function removeNode(node) {
-//   let was_inserted = window.graph.nodes.indexOf(node);
-//   if (was_inserted >= 0) {
-//     // remove from node list
-//     window.graph.nodes.splice(was_inserted, 1);
-//     // remove all references from links
-//     window.graph.links
-//       .filter((l) => (l.source === node || l.target === node)).
-//       forEach((link) => removeLink(link));
-//   }
-//   // alaways decrement, even if the node wasn't inserted for some reason
-//   window.graph.lastId--;
-
-//   trigger_full_repaint();
-//   return node;
-// }
-
-
-// function writeGraph() {
-//   d3.select('#graph-field').html(JSON.stringify(window.graph));
-// }
 
 function mousedown() {
   // prevent I-bar on drag
