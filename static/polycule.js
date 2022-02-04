@@ -297,7 +297,7 @@ class StorageHelper {
   merge(obj) {
     this.writing = true;
     Object.entries(obj).forEach(
-      (name, val) => this.update(name, val)
+      (val) => this.update(val[0], val[1])
     );
     this.save();
   }
