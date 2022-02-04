@@ -127,7 +127,7 @@ function editNode(d) {
     .property('value', d.r)
     .on('input', function () { d.r = this.value; });
   nodeMenu.select('#edit-node-dashed')
-    .property('value', d.dashed)
+    .property('checked', d.dashed)
     .on('change', function () { d.dashed = d3.select(this).property('checked') });
   nodeMenu.select('#delete-node')
     .on('click', function () {
@@ -151,25 +151,19 @@ function editLink(d) {
     .on('keyup', function () { d.sourceText = this.value; });
   linkMenu.select('#edit-source-arrow')
     .property('checked', d.sourceArrow)
-    .on('click', function () {
-      d.sourceArrow = d3.select(this).property('checked');
-    });
+    .on('change', function () { d.sourceArrow = d3.select(this).property('checked'); });
   linkMenu.select('#edit-target-text')
     .property('value', d.targetText)
     .on('keyup', function () { d.targetText = this.value; });
   linkMenu.select('#edit-target-arrow')
     .property('checked', d.targetArrow)
-    .on('click', function () {
-      d.targetArrow = d3.select(this).property('checked');
-    });
+    .on('change', function () { d.targetArrow = d3.select(this).property('checked'); });
   linkMenu.select('#edit-strength')
     .property('value', d.strength)
     .on('input', function () { d.strength = this.value; });
   linkMenu.select('#edit-link-dashed')
     .property('checked', d.dashed)
-    .on('click', function () {
-      d.dashed = d3.select(this).property('checked');
-    });
+    .on('change', function () { d.dashed = d3.select(this).property('checked'); });
   linkMenu.select('#delete-link')
     .on('click', function () {
       removeLink(d);
