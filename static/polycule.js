@@ -161,9 +161,11 @@ class Link extends Element {
     this.target = target;
     this.strength = 10;
     this.dashed = false;
-    this.targetText = "";
     this.sourceText = "";
+    this.targetText = "";
     this.centerText = "";
+    this.sourceArrow = false;
+    this.sourceArrow = false;
   }
 
   refreshNodeObjects(nodeList) {
@@ -225,6 +227,8 @@ class Link extends Element {
   static stroke(link) { return link.selected() ? '#00FFFF' : 'rgba(0,0,0,0.25)'; }
   static stroke_width(link) { return link.strength; }
   static stroke_dash(link) { return link.dashed ? `${link.strength / 1.5}, ${link.strength / 1.5}` : null; }
+  static source_arrow(link) { return link.sourceArrow ? 'url(#arrow)' : ''; }
+  static target_arrow(link) { return link.targetArrow ? 'url(#arrow)' : ''; }
 
   static update_line(data_binding) {
     data_binding
@@ -234,7 +238,9 @@ class Link extends Element {
       .attr('y2', Link.target_y)
       .attr('stroke', Link.stroke)
       .attr('stroke-width', Link.stroke_width)
-      .attr('stroke-dasharray', Link.stroke_dash);
+      .attr('stroke-dasharray', Link.stroke_dash)
+      .attr('marker-start', Link.source_arrow)
+      .attr('marker-end', Link.target_arrow);
   }
 
   static update_text(data_binding) {
@@ -261,6 +267,19 @@ class Link extends Element {
     var path_elements = data_binding.enter()
       .append('g')
       .classed('link', true);
+
+    const markerBoxSize = 3;
+    path_elements.append('defs').append('marker')
+      .attr('id', 'arrow')
+      .attr('viewBox', [0, 0, markerBoxSize, markerBoxSize])
+      .attr('refX', markerBoxSize / 2 + 1)
+      .attr('refY', markerBoxSize / 2)
+      .attr('markerWidth', markerBoxSize)
+      .attr('markerHeight', markerBoxSize)
+      .attr('orient', 'auto-start-reverse')
+      .append('path')
+      .attr('d', `M ${markerBoxSize / 2} ${markerBoxSize / 2} 0 ${markerBoxSize / 4} 0 ${markerBoxSize * 3 / 4} ${markerBoxSize / 2} ${markerBoxSize / 2}`)
+      .attr('fill', 'rgba(0,0,0,0.25)')
 
     Link.update_line(path_elements.append('line'));
 

@@ -146,9 +146,19 @@ function editLink(d) {
   linkMenu.select('#edit-source-text')
     .property('value', d.sourceText)
     .on('keyup', function () { d.sourceText = this.value; });
+  linkMenu.select('#edit-source-arrow')
+    .property('checked', d.sourceArrow)
+    .on('click', function () {
+      d.sourceArrow = d3.select(this).property('checked');
+    });
   linkMenu.select('#edit-target-text')
     .property('value', d.targetText)
     .on('keyup', function () { d.targetText = this.value; });
+  linkMenu.select('#edit-target-arrow')
+    .property('checked', d.targetArrow)
+    .on('click', function () {
+      d.targetArrow = d3.select(this).property('checked');
+    });
   linkMenu.select('#edit-strength')
     .property('value', d.strength)
     .on('input', function () { d.strength = this.value; });
