@@ -334,8 +334,8 @@ class StorageHelper {
 }
 
 class Viewport {
-  static width = 960;
-  static height = 500;
+  static width = 1800;
+  static height = 800;
   static visibleGraph = null;
 
   constructor(storage) {
