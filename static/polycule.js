@@ -312,6 +312,7 @@ class StorageHelper {
   }
 
   save() {
+    console.log('saving', this.val);
     d3.select('#graph-field').html(JSON.stringify(this.val));
     this.writing = false;
   }

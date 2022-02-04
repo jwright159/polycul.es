@@ -160,7 +160,6 @@ def inherit_polycule(polycule_id):
 def create_polycule():
     """ Create a new, blank polycule. """
     graph = """{
-        "lastId": 0,
         "nodes": [],
         "links": []
     }"""
