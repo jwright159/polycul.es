@@ -655,9 +655,13 @@ class Graph {
   // 'public' methods
 
   select(element) {
+    this.deselect();
+    element.select();
+  }
+
+  deselect() {
     this.nodes.forEach((n) => n.unselect());
     this.edges.forEach((e) => e.unselect());
-    element.select();
   }
 
   createNode(point) {

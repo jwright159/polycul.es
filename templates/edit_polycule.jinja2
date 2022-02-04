@@ -122,7 +122,7 @@
 <script src="/static/polycule.js" charset="utf-8"></script>
 <script src="/static/build.js" charset="utf-8"></script>
 
-<form action="/edit/save" method="post" class="wrapper flex" onsubmit="graphView.graph.save();return true;">
+<form action="/edit/save" method="post" class="wrapper flex" onsubmit="submitSave();return true;">
     <textarea name="graph" id="graph-field" class="hidden">{{ graph }}</textarea>
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}" />
     <div class="form-group">

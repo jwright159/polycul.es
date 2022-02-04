@@ -298,6 +298,12 @@ function keyup() {
 }
 
 
+function submitSave()
+{
+  graphView.graph.deselect();
+  graphView.graph.save();
+}
+
 function addTemplate(template) {
   var parts = template.split(';');
   var nodes = parts[0].split(',');
