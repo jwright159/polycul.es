@@ -120,6 +120,9 @@ function editNode(d) {
   nodeMenu.select('#edit-node-name')
     .property('value', d.name)
     .on('keyup', function () { d.name = this.value; });
+  nodeMenu.select('#edit-node-fill')
+    .property('value', d.fill)
+    .on('keyup', function () { d.fill = this.value; });
   nodeMenu.select('#edit-node-r')
     .property('value', d.r)
     .on('input', function () { d.r = this.value; });

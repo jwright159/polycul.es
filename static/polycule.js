@@ -70,11 +70,11 @@ class Node extends Element {
       this.y = 100 / 2;
     }
     this.r = 12;
+    this.fill = '#888';
   }
 
   static from(json) {
-    let node = Object.assign(new Node(0), json);
-    return node;
+    return Object.assign(new Node(0), json);
   }
 
   // selected() { return this.state === Element.states.SELECTED; }
@@ -94,12 +94,8 @@ class Node extends Element {
 
   // Draw Functions
   static set_radius(node) { return node.r; }
-  static set_stroke(node) {
-    return node.selected() ? '#00FFFF' : '#888';
-  }
-  static set_style(node) {
-    return node.dashed ? 'fill:#ccc!important' : null;
-  }
+  static set_stroke(node) { return node.selected() ? '#00FFFF' : '#888'; }
+  static set_style(node) { return `fill:${node.fill}!important`; }
   static set_stroke_dash(node) { return node.dashed ? `${node.r / 4}, ${node.r / 4}` : null; }
 
   static set_text_y(node) { return - node.r - 2; }
