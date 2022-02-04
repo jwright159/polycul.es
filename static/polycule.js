@@ -485,9 +485,9 @@ class GraphView {
       .charge(-500)
       .on('tick', this.simUpdate);
 
+    this.drag_line = vp.graphArea.append('line').attr('class', 'link dragline hidden');
     this.edge_group = vp.graphArea.append('g').selectAll('.link');
     this.node_group = vp.graphArea.append('g').selectAll('.node');
-    this.drag_line = vp.graphArea.append('line').attr('class', 'link dragline hidden');
   }
 
   dragLineStart(node) {
