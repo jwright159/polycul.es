@@ -280,8 +280,7 @@ function keydown() {
 
   // ctrl
   if (d3.event.keyCode === 17) {
-    // todo: add drag to viewport / graphView
-    node.call(force.drag);
+    graphView.node_group.call(graphView.d3Graph.drag);
     viewport.graphArea.classed('ctrl', true);
   }
 }
@@ -291,10 +290,9 @@ function keyup() {
 
   // ctrl
   if (d3.event.keyCode === 17) {
-    // todo drag
-    // node
-    //   .on('mousedown.drag', null)
-    //   .on('touchstart.drag', null);
+    graphView.node_group
+      .on('mousedown.drag', null)
+      .on('touchstart.drag', null);
     viewport.graphArea.classed('ctrl', false);
   }
 }
@@ -327,5 +325,9 @@ d3.select('.expand-help').on('click', function (e) {
 });
 
 console.log(`Calling bottom of build`);
+let editMode = true; // Listen, I'm stupid, and I don't know what I'm doing
+graphView.node_group
+  .on('mousedown.drag', null)
+  .on('touchstart.drag', null);
 // call again, which will disable dragging behavior
 Viewport.visibleGraph.trigger_full_repaint();

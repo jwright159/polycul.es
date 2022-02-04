@@ -520,6 +520,8 @@ class GraphView {
       // attach d3 events to nodes and links
       Link.attach_events(this.edge_group);
       Node.attach_events(this.node_group);
+      if (typeof editMode === 'undefined')
+        this.node_group.call(this.d3Graph.drag);
 
       // remove old elements
       this.edge_group.exit().remove();
@@ -722,7 +724,7 @@ class Graph {
 
 let storage = new StorageHelper(window.graph);
 let viewport = new Viewport(storage);
-let g = new Graph()
+let graphView = new Graph()
   .load(storage)
   .display(viewport)
   .view.start();
